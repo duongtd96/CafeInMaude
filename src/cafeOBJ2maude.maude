@@ -428,7 +428,9 @@ to qualify sorts, and built it again by using the \verb@"$"@ used by Maude:
 \begin{verbatim}
 %)
 
-  ceq paramSortsMap(C, TSM, QIL) = upTerm(QI)
+  ceq paramSortsMap(C, TSM, QIL) = 
+  --- upTerm(QI)
+  handleParamSortsMap(C, TSM, St', St'')
    if Q := downQid(C) /\
       St := string(Q) /\
       find(St, ":", 0) == notFound /\
@@ -436,8 +438,8 @@ to qualify sorts, and built it again by using the \verb@"$"@ used by Maude:
       St' := substr(St, 0, N) /\
       St'' := substr(St, N + 1, length(St)) /\
       Q' := qid(St'') /\
-      Q' in QIL /\
-      QI := qid(St'' + "$" + St') .
+      Q' in QIL .
+      --- QI := qid(St'' + "$" + St') .
 
   ceq paramSortsMap(C, (TN -> (TS ; SS), TSM), QIL) = upTerm(QI)
    if TS := downQid(C) /\
@@ -520,6 +522,31 @@ In other case, the constant is not modified:
 \end{verbatim}
 }
 
+\item
+handle a special case with qualifying name of op.
+e.g., "eq top(empty) = err.E ." in Qlock,
+it is incorrect to transform to E$err
+@author: duongtd
+@date: 20/08/01
+%)
+  op handleParamSortsMap : Constant TheorySortMap String String -> Term .
+  eq handleParamSortsMap(C, TSM, St, St') = 
+    if isSortSetContain(qid(St), TSM[qid(St')]) then
+      upTerm(qid(St' + "$" + St))
+    else
+      upTerm(qid(St))
+    fi .
+ 
+***(
+  check a sort set contains a sort name
+)
+  op isSortSetContain : Qid SortSet -> Bool .
+  eq isSortSetContain(Q, empty) = false .
+  eq isSortSetContain(Q, Q') = (Q == Q') .
+  eq isSortSetContain(Q, (Q ; SS)) = true .
+  eq isSortSetContain(Q, (Q' ; SS)) = isSortSetContain(Q, SS) [owise] .
+
+***(%
 \item
 \verb"_in_", which looks for a quoted identifier in a list:
 
@@ -6427,6 +6454,11 @@ CafeOBJ statement:
   eq ['module* QIL '`}, S, QIL'] = ['mod* QIL '`}, S, QIL'] .
   eq ['module QIL '`}, S, QIL'] = ['mod* QIL '`}, S, QIL'] .
   eq ['open QIL 'close, S, QIL'] = ['copen normalizeOpenClose(QIL 'close), S, QIL'] .
+  
+  --- in the case that the last statement end with commas ","
+  ceq ['view QIL Q '`, '`}, S, QIL'] = [normalizeCafeOBJView('cview QIL Q '. '`}), S, QIL']
+   if Q =/= '`{ .
+
   ceq ['view QIL Q '`}, S, QIL'] = [normalizeCafeOBJView('cview QIL Q '. '`}), S, QIL']
    if Q =/= '`{ .
   eq ['view QIL '`{ '`}, S, QIL'] = [normalizeCafeOBJView('cview QIL '`{ '`}), S, QIL'] .
