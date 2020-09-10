@@ -117,7 +117,7 @@ described in Section~\ref{subsec:cafe:commands}:
 %)
 
 fmod TRANSLATION-COMMANDS is
-  inc COMMANDS .
+  inc FM-COMMANDS .
 
 ***(%
 \end{verbatim}
@@ -615,7 +615,7 @@ transitions, or for obtaining these values.
 %)
 
 fmod CafeSIGN is
-  including EXT-SORT .
+  including FM-EXT-SORT .
 
   sorts HiddenSortDecl CafeDecl CafeDeclSet BehaviorEquation CafeEquation CafeEquationSet
         CafeOpDecl CafeOpDeclSet CafeModExp .
@@ -652,7 +652,7 @@ endfm
 
 fmod OPERATOR-Cafe is
   including CafeSIGN .
-  including UNIT .
+  including FM-UNIT .
 
   sorts Bop2op Bop2opList DoubleResultPair TypeConstants TypeConstantsList
         Combine4TupleResult RuleConditionPair MetaTermTriple MetaTermTripleSet .
@@ -1249,7 +1249,7 @@ for sorts, while \verb"parseCafeViewExp" translates view tokens:
   eq sort2sort('CafeToken[T]) = 'sortToken[T] .
   eq sort2sort(T) = T [owise] .
 
-  op parseCafeViewExp : Term -> ViewExp .
+  op parseCafeViewExp : Term -> ViewExpression .
   eq parseCafeViewExp('token[T]) = 'viewToken[T] .
   eq parseCafeViewExp(T) = T [owise] .
 
@@ -1419,7 +1419,7 @@ a module expression, a view expression, or a list of terms:
 
   sort ParseResult .
   op <_,_> : ModuleExpression Database -> ParseResult [ctor] .
-  op <_,_> : ViewExp Database -> ParseResult [ctor] .
+  op <_,_> : ViewExpression Database -> ParseResult [ctor] .
   op <_,_> : TermList Database -> ParseResult [ctor] .
 
 ***(%
