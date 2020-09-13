@@ -1,3 +1,5 @@
+--- set print attribute on .
+--- set trace on .
 load predefined_core.maude
 load parameter_config.maude
 load citp_aux.maude
@@ -17,7 +19,7 @@ load search_predicate.maude
 
 mod CafePARSER is
   inc CafeDECL-PARSING .
-  pr DATABASE-HANDLING .
+  pr FM-DATABASE-HANDLING .
   pr SEARCH_PREDICATE .
   pr PARAMETER-CONFIG .
   pr CITP-AUX .
@@ -78,6 +80,7 @@ a list of quoted identifiers reporting the errors found during the parsing proce
   var  TS : Sort .
   vars CafeM CafeM' : CafeModule .
   var  VDS : OpDeclSet .
+  var  VAS : VariableSet .
   vars PDR PDR' : ParseDeclResult .
   vars Ty Ty1 Ty2 : Type .
   vars N N' N'' INDENT : Nat .
@@ -121,7 +124,7 @@ a list of quoted identifiers reporting the errors found during the parsing proce
   var  RenS : RenamingSet .
   var  ParamL : ParameterList .
   vars MNS MNS' MNS'' MNS3 MNS4 MNS5 MNS6 : Set{ModuleName} .
-  vars VES VES' VES'' VES3 : Set{ViewExp} .
+  vars VES VES' VES'' VES3 : Set{ViewExpression} .
   vars MIS MIS' : Set{ModuleInfo} .
   var  VIS : Set{ViewInfo} .
 
@@ -576,7 +579,7 @@ The function \verb"procCafeMod4" traverses the module, applying the function
                     Database -> CafeParseResult .
   ceq procCafeMod4(T, '__[T', T''], PU, U, VDS, PSM, HSM, TSM, DB) =
         if QIL == nil
-        then procCafeMod4(T, T'', preModule(PDR), unit(PDR), vars(PDR), PSM, HSM', TSM, DB')
+        then procCafeMod4(T, T'', preModule(PDR), unit(PDR), varSet2OpSet(vars(PDR)), PSM, HSM', TSM, DB')
         else < DB, PSM, HSM', QIL >
         fi
    if < PDR, QIL, SS, DB' > := parseCafeDecl(T', PU, U, VDS, PSM, TSM, DB) /\
@@ -604,7 +607,7 @@ of the \verb"evalPreModule" function:
                             predefinedCafeEqual(unit(PDR)),
                             vars(PDR), insTermModule(getName(U), T, DB')) /\
       DB3 := updateDatabase4cafe(getName(U), DB'') /\
-      HSM' := addHiddenSort(HSM, getName(U), SS) .
+      HSM' := addHiddenSort(HSM, getName(U), SS) [print "#" F "(" TL ")" ] .
 
   ceq procCafeMod4(T, C, PU, U, VDS, PSM, HSM, TSM, DB) = < DB3, PSM, HSM', nil >
    if < PDR, nil, SS, DB' > := parseCafeDecl(C, PU, U, VDS, PSM, TSM, DB) /\
@@ -673,8 +676,8 @@ of the \verb"evalPreModule" function:
   ceq updateDatabase4cafeAux(ME, DB) =
              db(< ME ; T ; nonexecInLabel(addEqual&SearchEqs(U')) ;
                   nonexecInLabel(addEqual&SearchEqs(U'')) ; U3 ;
-                  VDS ; MNS ; VES > MIS, MNS', VIS, VES', MNS'', MNS3, MNS4, QIL)
-   if db(< ME ; T ; U' ; U'' ; U3 ; VDS ; MNS ; VES > MIS, MNS', VIS, VES', MNS'',
+                  VAS ; MNS ; VES > MIS, MNS', VIS, VES', MNS'', MNS3, MNS4, QIL)
+   if db(< ME ; T ; U' ; U'' ; U3 ; VAS ; MNS ; VES > MIS, MNS', VIS, VES', MNS'',
            MNS3, MNS4, QIL) := DB /\
       U5 := getFlatModule(modExp(evalModExp(ME, DB)),
                  database(evalModExp(ME, DB))) .
@@ -5151,10 +5154,10 @@ to the set of operators:
 
   ceq printCafeBody('var_:_.['neCafeTokenList[T], 'CafeToken[T']], M, DB, ODS, PL) =
                                                        < nil, ODS ODS' >
-   if ODS' := parseVars(downQidList(T), downQid(T')) .
+   if ODS' := varSet2OpSet(parseVars(downQidList(T), downQid(T'))) .
   ceq printCafeBody('vars_:_.['neCafeTokenList[T], 'CafeToken[T']], M, DB, ODS, PL) =
                                                        < nil, ODS ODS' >
-   if ODS' := parseVars(downQidList(T), downQid(T')) .
+   if ODS' := varSet2OpSet(parseVars(downQidList(T), downQid(T'))) .
 
 ***(%
 \end{verbatim}
@@ -5361,14 +5364,14 @@ Finally, the equation is built and returned.
 
   ceq printCafeBody('eq_=_.['CafeBubble[T], 'CafeBubble[T']], M, DB, ODS, PL) =
                             < 'eq QILL QIL' '= QIL'' QILA '., ODS >
-   if TW := if solveBubbles('bubble[extractLabel(T)], M, false, ODS, DB) :: Term
+   if TW := if solveBubbles('bubble[extractLabel(T)], M, false, opSet2VarSet(ODS), DB) :: Term
             then extractLabel(T)
             else T
             fi /\
       TW' := removeEqAtS(T') /\
       QIL := downQidList(TW) /\
       ODS' := ODS opDeclSetFromQidList(QIL) /\
-      T1 := solveBubbles('bubble[TW], M, false, ODS, DB) /\
+      T1 := solveBubbles('bubble[TW], M, false, opSet2VarSet(ODS), DB) /\
       T2 := solveSecondTerm(M, 'bubble[TW], 'bubble[TW'], ODS', DB) /\
       QIL' := prettyprintParams*(addSpace(metaPrettyPrint(M, T1, printOpts)), PL) /\
       QIL'' := prettyprintParams*(addSpace(metaPrettyPrint(M, T2, printOpts)), PL) /\
@@ -5385,14 +5388,14 @@ Finally, the equation is built and returned.
 
   ceq printCafeBody('beq_=_.['CafeBubble[T], 'CafeBubble[T']], M, DB, ODS, PL) =
                             < 'eq QILL QIL' '= QIL'' QILA '., ODS >
-   if TW := if solveBubbles('bubble[extractLabel(T)], M, false, ODS, DB) :: Term
+   if TW := if solveBubbles('bubble[extractLabel(T)], M, false, opSet2VarSet(ODS), DB) :: Term
             then extractLabel(T)
             else T
             fi /\
       TW' := removeEqAtS(T') /\
       QIL := downQidList(TW) /\
       ODS' := ODS opDeclSetFromQidList(QIL) /\
-      T1 := solveBubbles('bubble[TW], M, false, ODS, DB) /\
+      T1 := solveBubbles('bubble[TW], M, false, opSet2VarSet(ODS), DB) /\
       *** T2 := solveBubbles('bubble[TW'], M, false, ODS', DB) /\
       T2 := solveSecondTerm(M, 'bubble[TW], 'bubble[TW'], ODS', DB) /\
       QIL' := prettyprintParams*(addSpace(metaPrettyPrint(M, T1, printOpts)), PL) /\
@@ -5402,81 +5405,81 @@ Finally, the equation is built and returned.
   ceq printCafeBody('ceq_=_if_.['CafeBubble[T], 'CafeBubble[T'], 'CafeBubble[T'']],
                     M, DB, ODS, PL) =
                            < 'ceq QILL QIL' '= QIL'' 'if QIL3 QILA '., ODS >
-   if TW := if solveBubbles('bubble[extractLabel(T)], M, false, ODS, DB) :: Term
+   if TW := if solveBubbles('bubble[extractLabel(T)], M, false, opSet2VarSet(ODS), DB) :: Term
             then extractLabel(T)
             else T
             fi /\
       TW' := removeEqAtS(T'') /\
       QIL := downQidList(TW) /\
       ODS' := ODS opDeclSetFromQidList(QIL) /\
-      T1 := solveBubbles('bubble[TW], M, false, ODS, DB) /\
+      T1 := solveBubbles('bubble[TW], M, false, opSet2VarSet(ODS), DB) /\
       *** T2 := solveBubbles('bubble[T'], M, false, ODS', DB) /\
       T2 := solveSecondTerm(M, 'bubble[TW], 'bubble[T'], ODS', DB) /\
       QIL' := prettyprintParams*(addSpace(metaPrettyPrint(M, T1, printOpts)), PL) /\
       QIL'' := prettyprintParams*(addSpace(metaPrettyPrint(M, T2, printOpts)), PL) /\
       M' := addInfoConds(addOps(ODS', M)) /\
       QIL3 := prettyprintParams*(printCond(M,
-                       solveBubblesCond('bubble[TW'], M, M', false, ODS', DB)), PL) /\
+                       solveBubblesCond('bubble[TW'], M, M', false, opSet2VarSet(ODS'), DB)), PL) /\
       QILL := printLabel(T) /\
       QILA := printAtS(getEqAtS(T'')) .
   ceq printCafeBody('bceq_=_if_.['CafeBubble[T], 'CafeBubble[T'], 'CafeBubble[T'']],
                     M, DB, ODS, PL) =
                            < 'ceq QILL QIL' '= QIL'' 'if QIL3 QILA '., ODS >
-   if TW := if solveBubbles('bubble[extractLabel(T)], M, false, ODS, DB) :: Term
+   if TW := if solveBubbles('bubble[extractLabel(T)], M, false, opSet2VarSet(ODS), DB) :: Term
             then extractLabel(T)
             else T
             fi /\
       TW' := removeEqAtS(T'') /\
       QIL := downQidList(TW) /\
       ODS' := ODS opDeclSetFromQidList(QIL) /\
-      T1 := solveBubbles('bubble[TW], M, false, ODS, DB) /\
+      T1 := solveBubbles('bubble[TW], M, false, opSet2VarSet(ODS), DB) /\
       *** T2 := solveBubbles('bubble[T'], M, false, ODS', DB) /\
       T2 := solveSecondTerm(M, 'bubble[TW], 'bubble[T'], ODS', DB) /\
       QIL' := prettyprintParams*(addSpace(metaPrettyPrint(M, T1, printOpts)), PL) /\
       QIL'' := prettyprintParams*(addSpace(metaPrettyPrint(M, T2, printOpts)), PL) /\
       M' := addInfoConds(addOps(ODS', M)) /\
       QIL3 := prettyprintParams*(printCond(M,
-                       solveBubblesCond('bubble[TW'], M, M', false, ODS', DB)), PL) /\
+                       solveBubblesCond('bubble[TW'], M, M', false, opSet2VarSet(ODS'), DB)), PL) /\
       QILL := printLabel(T) /\
       QILA := printAtS(getEqAtS(T'')) .
   ceq printCafeBody('cq_=_if_.['CafeBubble[T], 'CafeBubble[T'], 'CafeBubble[T'']],
                     M, DB, ODS, PL) =
                            < 'cq QILL QIL1 '= QIL2 'if QIL3 QILA '., ODS >
-   if TW := if solveBubbles('bubble[extractLabel(T)], M, false, ODS, DB) :: Term
+   if TW := if solveBubbles('bubble[extractLabel(T)], M, false, opSet2VarSet(ODS), DB) :: Term
             then extractLabel(T)
             else T
             fi /\
       TW' := removeEqAtS(T'') /\
       QIL := downQidList(TW) /\
       ODS' := ODS opDeclSetFromQidList(QIL) /\
-      T1 := solveBubbles('bubble[TW], M, false, ODS, DB) /\
+      T1 := solveBubbles('bubble[TW], M, false, opSet2VarSet(ODS), DB) /\
       *** T2 := solveBubbles('bubble[T'], M, false, ODS', DB) /\
       T2 := solveSecondTerm(M, 'bubble[TW], 'bubble[T'], ODS', DB) /\
       QIL1 := prettyprintParams*(addSpace(metaPrettyPrint(M, T1, printOpts)), PL) /\
       QIL2 := prettyprintParams*(addSpace(metaPrettyPrint(M, T2, printOpts)), PL) /\
       M' := addInfoConds(addOps(ODS', M)) /\
       QIL3 := prettyprintParams*(printCond(M,
-                        solveBubblesCond('bubble[TW'], M, M', false, ODS', DB)), PL) /\
+                        solveBubblesCond('bubble[TW'], M, M', false, opSet2VarSet(ODS'), DB)), PL) /\
       QILL := printLabel(T) /\
       QILA := printAtS(getEqAtS(T'')) .
   ceq printCafeBody('bcq_=_if_.['CafeBubble[T], 'CafeBubble[T'], 'CafeBubble[T'']],
                     M, DB, ODS, PL) =
                            < 'cq QILL QIL1 '= QIL2 'if QIL3 QILA '., ODS >
-   if TW := if solveBubbles('bubble[extractLabel(T)], M, false, ODS, DB) :: Term
+   if TW := if solveBubbles('bubble[extractLabel(T)], M, false, opSet2VarSet(ODS), DB) :: Term
             then extractLabel(T)
             else T
             fi /\
       TW' := removeEqAtS(T'') /\
       QIL := downQidList(TW) /\
       ODS' := ODS opDeclSetFromQidList(QIL) /\
-      T1 := solveBubbles('bubble[TW], M, false, ODS, DB) /\
+      T1 := solveBubbles('bubble[TW], M, false, opSet2VarSet(ODS), DB) /\
       *** T2 := solveBubbles('bubble[T'], M, false, ODS', DB) /\
       T2 := solveSecondTerm(M, 'bubble[TW], 'bubble[T'], ODS', DB) /\
       QIL1 := prettyprintParams*(addSpace(metaPrettyPrint(M, T1, printOpts)), PL) /\
       QIL2 := prettyprintParams*(addSpace(metaPrettyPrint(M, T2, printOpts)), PL) /\
       M' := addInfoConds(addOps(ODS', M)) /\
       QIL3 := prettyprintParams*(printCond(M,
-                        solveBubblesCond('bubble[TW'], M, M', false, ODS', DB)), PL) /\
+                        solveBubblesCond('bubble[TW'], M, M', false, opSet2VarSet(ODS'), DB)), PL) /\
       QILL := printLabel(T) /\
       QILA := printAtS(getEqAtS(T'')) .
 
@@ -5485,14 +5488,14 @@ Finally, the equation is built and returned.
   *************************
   ceq printCafeBody('trans_=>_.['CafeBubble[T], 'CafeBubble[T']], M, DB, ODS, PL) =
                             < 'trans QILL QIL' '=> QIL'' QILA '., ODS >
-   if TW := if solveBubbles('bubble[extractLabel(T)], M, false, ODS, DB) :: Term
+   if TW := if solveBubbles('bubble[extractLabel(T)], M, false, opSet2VarSet(ODS), DB) :: Term
             then extractLabel(T)
             else T
             fi /\
       TW' := removeEqAtS(T') /\
       QIL := downQidList(TW) /\
       ODS' := ODS opDeclSetFromQidList(QIL) /\
-      T1 := solveBubbles('bubble[TW], M, false, ODS, DB) /\
+      T1 := solveBubbles('bubble[TW], M, false, opSet2VarSet(ODS), DB) /\
       *** T2 := solveBubbles('bubble[TW'], M, false, ODS', DB) /\
       T2 := solveSecondTerm(M, 'bubble[TW], 'bubble[TW'], ODS', DB) /\
       QIL' := prettyprintParams*(addSpace(metaPrettyPrint(M, T1, printOpts)), PL) /\
@@ -5501,14 +5504,14 @@ Finally, the equation is built and returned.
       QILA := printAtS(getEqAtS(T')) .
   ceq printCafeBody('btrans_=>_.['CafeBubble[T], 'CafeBubble[T']], M, DB, ODS, PL) =
                             < 'trans QILL QIL' '=> QIL'' QILA '., ODS >
-   if TW := if solveBubbles('bubble[extractLabel(T)], M, false, ODS, DB) :: Term
+   if TW := if solveBubbles('bubble[extractLabel(T)], M, false, opSet2VarSet(ODS), DB) :: Term
             then extractLabel(T)
             else T
             fi /\
       TW' := removeEqAtS(T') /\
       QIL := downQidList(TW) /\
       ODS' := ODS opDeclSetFromQidList(QIL) /\
-      T1 := solveBubbles('bubble[TW], M, false, ODS, DB) /\
+      T1 := solveBubbles('bubble[TW], M, false, opSet2VarSet(ODS), DB) /\
       *** T2 := solveBubbles('bubble[TW'], M, false, ODS', DB) /\
       T2 := solveSecondTerm(M, 'bubble[TW], 'bubble[TW'], ODS', DB) /\
       QIL' := prettyprintParams*(addSpace(metaPrettyPrint(M, T1, printOpts)), PL) /\
@@ -5517,14 +5520,14 @@ Finally, the equation is built and returned.
       QILA := printAtS(getEqAtS(T')) .
   ceq printCafeBody('trns_=>_.['CafeBubble[T], 'CafeBubble[T']], M, DB, ODS, PL) =
                             < 'trans QILL QIL' '=> QIL'' QILA '., ODS >
-   if TW := if solveBubbles('bubble[extractLabel(T)], M, false, ODS, DB) :: Term
+   if TW := if solveBubbles('bubble[extractLabel(T)], M, false, opSet2VarSet(ODS), DB) :: Term
             then extractLabel(T)
             else T
             fi /\
       TW' := removeEqAtS(T') /\
       QIL := downQidList(TW) /\
       ODS' := ODS opDeclSetFromQidList(QIL) /\
-      T1 := solveBubbles('bubble[TW], M, false, ODS, DB) /\
+      T1 := solveBubbles('bubble[TW], M, false, opSet2VarSet(ODS), DB) /\
       T2 := solveSecondTerm(M, 'bubble[TW], 'bubble[TW'], ODS', DB) /\
       QIL' := prettyprintParams*(addSpace(metaPrettyPrint(M, T1, printOpts)), PL) /\
       QIL'' := prettyprintParams*(addSpace(metaPrettyPrint(M, T2, printOpts)), PL) /\
@@ -5533,40 +5536,40 @@ Finally, the equation is built and returned.
   ceq printCafeBody('ctrans_=>_if_.['CafeBubble[T], 'CafeBubble[T'], 'CafeBubble[T'']],
                     M, DB, ODS, PL) =
                            < 'ctrans QILL QIL' '=> QIL'' 'if QIL3 QILA '., ODS >
-   if TW := if solveBubbles('bubble[extractLabel(T)], M, false, ODS, DB) :: Term
+   if TW := if solveBubbles('bubble[extractLabel(T)], M, false, opSet2VarSet(ODS), DB) :: Term
             then extractLabel(T)
             else T
             fi /\
       TW' := removeEqAtS(T'') /\
       QIL := downQidList(TW) /\
       ODS' := ODS opDeclSetFromQidList(QIL) /\
-      T1 := solveBubbles('bubble[TW], M, false, ODS, DB) /\
+      T1 := solveBubbles('bubble[TW], M, false, opSet2VarSet(ODS), DB) /\
       T2 := solveSecondTerm(M, 'bubble[TW], 'bubble[T'], ODS', DB) /\
       QIL' := prettyprintParams*(addSpace(metaPrettyPrint(M, T1, printOpts)), PL) /\
       QIL'' := prettyprintParams*(addSpace(metaPrettyPrint(M, T2, printOpts)), PL) /\
       M' := addInfoConds(addOps(ODS', M)) /\
       QIL3 := prettyprintParams*(printCond(M,
-                         solveBubblesCond('bubble[TW'], M, M', false, ODS', DB)), PL) /\
+                         solveBubblesCond('bubble[TW'], M, M', false, opSet2VarSet(ODS'), DB)), PL) /\
       QILL := printLabel(T) /\
       QILA := printAtS(getEqAtS(T'')) .
 
   ceq printCafeBody('bctrans_=>_if_.['CafeBubble[T], 'CafeBubble[T'], 'CafeBubble[T'']],
                     M, DB, ODS, PL) =
                            < 'ctrans QILL QIL' '=> QIL'' 'if QIL3 QILA '., ODS >
-   if TW := if solveBubbles('bubble[extractLabel(T)], M, false, ODS, DB) :: Term
+   if TW := if solveBubbles('bubble[extractLabel(T)], M, false, opSet2VarSet(ODS), DB) :: Term
             then extractLabel(T)
             else T
             fi /\
       TW' := removeEqAtS(T'') /\
       QIL := downQidList(TW) /\
       ODS' := ODS opDeclSetFromQidList(QIL) /\
-      T1 := solveBubbles('bubble[TW], M, false, ODS, DB) /\
+      T1 := solveBubbles('bubble[TW], M, false, opSet2VarSet(ODS), DB) /\
       T2 := solveSecondTerm(M, 'bubble[TW], 'bubble[T'], ODS', DB) /\
       QIL' := prettyprintParams*(addSpace(metaPrettyPrint(M, T1, printOpts)), PL) /\
       QIL'' := prettyprintParams*(addSpace(metaPrettyPrint(M, T2, printOpts)), PL) /\
       M' := addInfoConds(addOps(ODS', M)) /\
       QIL3 := prettyprintParams*(printCond(M,
-                         solveBubblesCond('bubble[TW'], M, M', false, ODS', DB)), PL) /\
+                         solveBubblesCond('bubble[TW'], M, M', false, opSet2VarSet(ODS'), DB)), PL) /\
       QILL := printLabel(T) /\
       QILA := printAtS(getEqAtS(T'')) .
 
@@ -5602,20 +5605,20 @@ The printed transition is finally composed and returned.
   ceq printCafeBody('ctrns_=>_if_.['CafeBubble[T], 'CafeBubble[T'],
                     'CafeBubble[T'']], M, DB, ODS, PL) =
                            < 'ctrns QILL QIL' '=> QIL'' 'if QIL3 QILA '., ODS >
-   if TW := if solveBubbles('bubble[extractLabel(T)], M, false, ODS, DB) :: Term
+   if TW := if solveBubbles('bubble[extractLabel(T)], M, false, opSet2VarSet(ODS), DB) :: Term
             then extractLabel(T)
             else T
             fi /\
       TW' := removeEqAtS(T'') /\
       QIL := downQidList(TW) /\
       ODS' := ODS opDeclSetFromQidList(QIL) /\
-      T1 := solveBubbles('bubble[TW], M, false, ODS, DB) /\
+      T1 := solveBubbles('bubble[TW], M, false, opSet2VarSet(ODS), DB) /\
       T2 := solveSecondTerm(M, 'bubble[TW], 'bubble[T'], ODS', DB) /\
       QIL' := prettyprintParams*(addSpace(metaPrettyPrint(M, T1, printOpts)), PL) /\
       QIL'' := prettyprintParams*(addSpace(metaPrettyPrint(M, T2, printOpts)), PL) /\
       M' := addInfoConds(addOps(ODS', M)) /\
       QIL3 := prettyprintParams*(printCond(M,
-                    solveBubblesCond('bubble[TW'], M, M', false, ODS', DB)), PL) /\
+                    solveBubblesCond('bubble[TW'], M, M', false, opSet2VarSet(ODS'), DB)), PL) /\
       QILL := printLabel(T) /\
       QILA := printAtS(getEqAtS(T'')) .
 
@@ -6134,7 +6137,7 @@ looks for the module in the database and prints it with \texttt{printCafeModule}
    => < O : X@Database | input : nilTermList, output : QIL,
                          db : DB, Atts >
    if Q := downQid(T) /\
-      < T' ; ODS ; M > := getTermModule(Q, DB) /\
+      < T' ; VS:VariableSet ; M > := getTermModule(Q, DB) /\
       M' := getFlatModule(Q, DB) /\
       QIL := printCafeModule(T', M', DB, false) .
 
@@ -6156,7 +6159,7 @@ the module cannot be found:
                                               'The 'module 'cannot 'be 'found. '\n),
                          db : DB, Atts >
    if Q := downQid(T) /\
-      not getTermModule(Q, DB) :: Tuple{Term,OpDeclSet,Module} .
+      not getTermModule(Q, DB) :: Tuple{Term,VariableSet,Module} .
 
 ***(%
 \end{verbatim}
@@ -6248,7 +6251,7 @@ and prints the corresponding message:
   var  SMI : Set{ModuleInfo} .
   vars SMN1 SMN2 SMN3 SMN4 : Set{ModuleName} .
   var  SVI : Set{ViewInfo} .
-  var  SVE : Set{ViewExp} .
+  var  SVE : Set{ViewExpression} .
   var  MN : ModuleName .
   var  DT : Default{Term} .
   vars M1 M2 M3 M4 : Module .
@@ -6258,13 +6261,13 @@ and prints the corresponding message:
 
   op getTheorySort : Set{ModuleInfo} -> TheorySortMap [memo] .
   eq getTheorySort(emptyInfoSet) = predefinedTheorySort .
-  ceq getTheorySort(< MN ; DT ; M1 ; M2 ; M3 ; ODS ; SMN1 ; SVE > SMI) =
+  ceq getTheorySort(< MN ; DT ; M1 ; M2 ; M3 ; VS:VariableSet ; SMN1 ; SVE > SMI) =
        if isTheory(M1)
        then Q -> getSorts(M1)
        else empty
        fi, getTheorySort(SMI)
    if Q := getName(M1) .
-  ceq getTheorySort(< MN ; M1 ; M2 ; M3 ; M4 ; ODS ; SMN1 ; SVE > SMI) =
+  ceq getTheorySort(< MN ; M1 ; M2 ; M3 ; M4 ; VS:VariableSet ; SMN1 ; SVE > SMI) =
        if isTheory(M2)
        then getName(M2) -> getSorts(M2)
        else empty

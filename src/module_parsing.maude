@@ -16,23 +16,125 @@ for tokens (like sorts), and \verb"@NeCafeTokenList@" for nonempty lists of toke
 \begin{verbatim}
 %)
 
+fmod IPSG-CONVERT is 
+  pr FM-EXT-SORT .
+
+  op var2Op : Variable -> OpDecl .
+  op op2Var : OpDecl -> Variable .
+  op varSet2OpSet : VariableSet -> OpDeclSet .
+  op opSet2VarSet : OpDeclSet -> VariableSet .
+
+  vars Q Q1 Q2 F : Qid .
+  vars ST ST1 ST2 : String .
+  vars N N1 : Nat .
+  vars V V1 V2 : Variable .
+  vars OP OP1 OP2 : OpDecl .
+  vars VS VS1 VS2 : VariableSet .
+  vars OPS OPS1 OPS2 : OpDeclSet .
+
+  ceq var2Op(Q) = (op qid(ST1) : nil -> qid(ST2) [none] .)
+    if Q =/= ': /\
+      ST := string(Q) /\
+      N := find(ST, ":", 0) /\
+      ST1 := substr(ST, 0, N) /\
+      ST2 := substr(ST, s(N), length(ST)) /\
+      ST2 =/= "" .
+  
+  eq var2Op(Q) = none [owise print "error"] .
+
+  eq op2Var(op Q : nil -> Q1 [none] .) = qid(string(Q) + ":" + string(Q1)) .
+  eq op2Var(OP) = none [owise print "error2"] .
+
+  eq varSet2OpSet(none) = none .
+  eq varSet2OpSet(V) = var2Op(V) .
+  eq varSet2OpSet( (V ; VS) ) = var2Op(V) varSet2OpSet(VS) .
+
+  eq opSet2VarSet(none) = none .
+  eq opSet2VarSet(OP OPS) = (op2Var(OP) ; opSet2VarSet(OPS)) .
+
+--- TODO : remove
+  vars T T' : Term .
+  var  QIL : QidList .
+  var  TL : TermList .
+  var  VDS : OpDeclSet .
+  var  C : Constant .
+
+  op constsToVars : Term OpDeclSet -> Term [memo] .
+  op constsToVars : TermList OpDeclSet -> TermList [memo] .
+  op constsToVarsAux : Constant OpDeclSet -> Qid [memo] .
+
+  eq constsToVars(F[TL], VDS) = F[constsToVars(TL, VDS)] .
+  eq constsToVars(C, VDS) = constsToVarsAux(C, VDS) .
+  eq constsToVars(V, VDS) = V . 
+  eq constsToVars(qidError(QIL), VDS) = qidError(QIL) . 
+  ceq constsToVars((T, TL), VDS) 
+    = (constsToVars(T, VDS), constsToVars(TL, VDS)) 
+    if TL =/= empty .
+
+endfm
+
 fmod CafeBUBBLES is
   including QID-LIST .
 
   sorts @CafeBubble@ @CafeToken@ @NeCafeTokenList@ .
+  sorts @CafeUBubble@ @CafeStBubble@ @CafeEqLBubble@ @CafeRlLBubble@ 
+    @CafeSdLBubble@ @CafeRCBubble@ @CafeRBubble@ .
 
   op CafeBubble : QidList -> @CafeBubble@ [special (id-hook Bubble (1 -1 ( ))
                             op-hook qidListSymbol (__ : QidList QidList ~> QidList)
-                            op-hook qidSymbol (<Qids> : ~> Qid))] .
+                            op-hook qidSymbol (<Qids> : ~> Qid)
+                            id-hook Exclude (. 
+                              eq ceq rl crl mb cmb sd csd
+                              var vars strat endm
+                              endfm endsm sorts sort
+                              op ops
+                              protecting pr including inc extending
+                              constr assoc comm = ))] .
+  
+  op CafeUBubble : QidList -> @CafeUBubble@ [special (id-hook Bubble (1 -1 ( ))
+                            op-hook qidListSymbol (__ : QidList QidList ~> QidList)
+                            op-hook qidSymbol (<Qids> : ~> Qid)
+                            )] .
+
+  op CafeStBubble : QidList -> @CafeStBubble@ [special (id-hook Bubble (1 -1 ( ))
+                            op-hook qidListSymbol (__ : QidList QidList ~> QidList)
+                            op-hook qidSymbol (<Qids> : ~> Qid)
+                            id-hook Exclude ( using ))] .
+
+  op CafeEqLBubble : QidList -> @CafeEqLBubble@ [special (id-hook Bubble (1 -1 ( ))
+                            op-hook qidListSymbol (__ : QidList QidList ~> QidList)
+                            op-hook qidSymbol (<Qids> : ~> Qid)
+                            id-hook Exclude ( = ))] .
+
+  op CafeRlLBubble : QidList -> @CafeRlLBubble@ [special (id-hook Bubble (1 -1 ( ))
+                            op-hook qidListSymbol (__ : QidList QidList ~> QidList)
+                            op-hook qidSymbol (<Qids> : ~> Qid)
+                            id-hook Exclude ( => ))] .
+
+  op CafeSdLBubble : QidList -> @CafeSdLBubble@ [special (id-hook Bubble (1 -1 ( ))
+                            op-hook qidListSymbol (__ : QidList QidList ~> QidList)
+                            op-hook qidSymbol (<Qids> : ~> Qid)
+                            id-hook Exclude ( := ))] .
+
+  op CafeRCBubble : QidList -> @CafeRCBubble@ [special (id-hook Bubble (1 -1 ( ))
+                            op-hook qidListSymbol (__ : QidList QidList ~> QidList)
+                            op-hook qidSymbol (<Qids> : ~> Qid)
+                            id-hook Exclude ( if ))] .
+
+  op CafeRBubble : QidList -> @CafeRBubble@ [special (id-hook Bubble (1 -1 ( ))
+                            op-hook qidListSymbol (__ : QidList QidList ~> QidList)
+                            op-hook qidSymbol (<Qids> : ~> Qid)
+                            id-hook Exclude ( . ))] .
 
   op CafeToken : Qid -> @CafeToken@ [special (id-hook Bubble (1 1)
                             op-hook qidSymbol (<Qids> : ~> Qid)
-                            id-hook Exclude(. [] < { } ( )))] .
+                            id-hook Exclude (. [ ] < { } ( ))
+                            )] .
 
   op neCafeTokenList : QidList -> @NeCafeTokenList@ [special (id-hook Bubble (1 -1)
                             op-hook qidListSymbol (__ : QidList QidList ~> QidList)
                             op-hook qidSymbol (<Qids> : ~> Qid)
-                            id-hook Exclude(. { } ))] .
+                            id-hook Exclude (. { } -> ))] .
 endfm
 
 ***(%
@@ -405,9 +507,9 @@ analyze the last bubble looking for attributes, such as \verb"nonexec":
 \begin{verbatim}
 %)
 
-  op eq_=_. : @CafeBubble@ @CafeBubble@ -> @CafeEqDecl@ [ctor] .
-  op ceq_=_if_. : @CafeBubble@ @CafeBubble@ @CafeBubble@ -> @CafeEqDecl@ [ctor] .
-  op cq_=_if_. : @CafeBubble@ @CafeBubble@ @CafeBubble@ -> @CafeEqDecl@ [ctor] .
+  op eq_=_. : @CafeEqLBubble@ @CafeRBubble@ -> @CafeEqDecl@ [ctor] .
+  op ceq_=_if_. : @CafeEqLBubble@ @CafeRCBubble@ @CafeRBubble@ -> @CafeEqDecl@ [ctor] .
+  op cq_=_if_. : @CafeEqLBubble@ @CafeRCBubble@ @CafeRBubble@ -> @CafeEqDecl@ [ctor] .
 
 ***(%
 \end{verbatim}
@@ -421,17 +523,17 @@ or the attributes of the transitions:
 \begin{verbatim}
 %)
 
-  op trans_=>_. : @CafeBubble@ @CafeBubble@ -> @CafeTransDecl@ [ctor] .
-  op trns_=>_. : @CafeBubble@ @CafeBubble@ -> @CafeTransDecl@ [ctor] .
-  op ctrans_=>_if_. : @CafeBubble@ @CafeBubble@ @CafeBubble@
+  op trans_=>_. : @CafeRlLBubble@ @CafeRBubble@ -> @CafeTransDecl@ [ctor] .
+  op trns_=>_. : @CafeRlLBubble@ @CafeRBubble@ -> @CafeTransDecl@ [ctor] .
+  op ctrans_=>_if_. : @CafeRlLBubble@ @CafeRCBubble@ @CafeRBubble@
                       -> @CafeTransDecl@ [ctor] .
-  op ctrns_=>_if_. : @CafeBubble@ @CafeBubble@ @CafeBubble@
+  op ctrns_=>_if_. : @CafeRlLBubble@ @CafeRCBubble@ @CafeRBubble@
                      -> @CafeTransDecl@ [ctor] .
-  op btrans_=>_. : @CafeBubble@ @CafeBubble@ -> @CafeTransDecl@ [ctor] .
-  op btrns_=>_. : @CafeBubble@ @CafeBubble@ -> @CafeTransDecl@ [ctor] .
-  op bctrans_=>_if_. : @CafeBubble@ @CafeBubble@ @CafeBubble@
+  op btrans_=>_. : @CafeRlLBubble@ @CafeRBubble@ -> @CafeTransDecl@ [ctor] .
+  op btrns_=>_. : @CafeRlLBubble@ @CafeRBubble@ -> @CafeTransDecl@ [ctor] .
+  op bctrans_=>_if_. : @CafeRlLBubble@ @CafeRCBubble@ @CafeRBubble@
                        -> @CafeTransDecl@ [ctor] .
-  op bctrns_=>_if_. : @CafeBubble@ @CafeBubble@ @CafeBubble@
+  op bctrns_=>_if_. : @CafeRlLBubble@ @CafeRCBubble@ @CafeRBubble@
                       -> @CafeTransDecl@ [ctor] .
 
 ***(%
@@ -486,10 +588,10 @@ declared or not:
                        -> @CafeOpDecl@ [ctor] .
   op bops_:_->_`{_`}. : @NeCafeTokenList@ @CafeTypeList@ @CafeType@ @CafeAttrList@
                         -> @CafeOpDecl@ [ctor] .
-  op beq_=_. : @CafeBubble@ @CafeBubble@ -> @CafeEqDecl@ [ctor] .
-  op bceq_=_if_. : @CafeBubble@ @CafeBubble@ @CafeBubble@ ->
+  op beq_=_. : @CafeEqLBubble@ @CafeRBubble@ -> @CafeEqDecl@ [ctor] .
+  op bceq_=_if_. : @CafeEqLBubble@ @CafeRCBubble@ @CafeRBubble@ ->
                    @BehaviorEquationDecl@ [ctor] .
-  op bcq_=_if_. : @CafeBubble@ @CafeBubble@ @CafeBubble@ ->
+  op bcq_=_if_. : @CafeEqLBubble@ @CafeRCBubble@ @CafeRBubble@ ->
                   @BehaviorEquationDecl@ [ctor] .
 
   *** View declarations
@@ -1057,6 +1159,8 @@ fmod CafeDECL-PARSING is
   pr MAP{Qid, SortSet} * (op _|->_ to _->_,
                           sort Map{Qid, SortSet} to TheorySortMap) .
 
+  pr IPSG-CONVERT .
+
 ***(%
 \end{verbatim}
 }
@@ -1308,13 +1412,13 @@ for sorts, while \verb"parseCafeViewExp" translates view tokens:
    if T4 := addSortToken(T') .
 
   ***parse equations at meta-level
-  eq parseCafeDecl('eq_=_.['CafeBubble[T], 'CafeBubble[T']], CafeM) = CafeM . ***addEqs((eq 'T = T' [none] .), CafeM) .
-  eq parseCafeDecl('cq_=_if_.['CafeBubble[T], 'CafeBubble[T'], 'CafeBubble[T'']], CafeM) = CafeM .
-  eq parseCafeDecl('ceq_=_if_.['CafeBubble[T], 'CafeBubble[T'], 'CafeBubble[T'']], CafeM) = CafeM .
+  eq parseCafeDecl('eq_=_.['CafeEqLBubble[T], 'CafeRBubble[T']], CafeM) = CafeM . ***addEqs((eq 'T = T' [none] .), CafeM) .
+  eq parseCafeDecl('cq_=_if_.['CafeEqLBubble[T], 'CafeRCBubble[T'], 'CafeRBubble[T'']], CafeM) = CafeM .
+  eq parseCafeDecl('ceq_=_if_.['CafeEqLBubble[T], 'CafeRCBubble[T'], 'CafeRBubble[T'']], CafeM) = CafeM .
    *** addEqs((ceq T = T' if T'' = ''true.Bool [none] .), CafeM) .
    ***to be handled
-  eq parseCafeDecl('bceq_=_if_.['CafeBubble[T], 'CafeBubble[T'], 'CafeBubble[T'']], CafeM) = CafeM .
-  eq parseCafeDecl('bcq_=_if_.['CafeBubble[T], 'CafeBubble[T'], 'CafeBubble[T'']], CafeM) = CafeM .
+  eq parseCafeDecl('bceq_=_if_.['CafeEqLBubble[T], 'CafeRCBubble[T'], 'CafeRBubble[T'']], CafeM) = CafeM .
+  eq parseCafeDecl('bcq_=_if_.['CafeEqLBubble[T], 'CafeRCBubble[T'], 'CafeRBubble[T'']], CafeM) = CafeM .
 
   eq parseCafeDecl('var_:_.['neCafeTokenList[T], T'], CafeM) = CafeM .
   eq parseCafeDecl('vars_:_.['neCafeTokenList[T], T'], CafeM) = CafeM .
@@ -1340,11 +1444,11 @@ Full Maude function
   ceq parseCafeDecl('protecting`(_`)[T], PU, U, VDS, PSM, TSM, DB) = < PDR, nil, none, DB' >
    if TS := changeTheoryByModule(T, isATheory(U), DB) /\
       < T', DB' > := parseCafeModExp(TS, PSM, DB) /\
-      PDR := parseDecl('protecting_.[T'], PU, U, VDS) .
+      PDR := parseDecl('protecting_.[T'], PU, U, opSet2VarSet(VDS)) .
   ceq parseCafeDecl('pr`(_`)[T], PU, U, VDS, PSM, TSM, DB) = < PDR, nil, none, DB' >
    if TS := changeTheoryByModule(T, isATheory(U), DB) /\
       < T', DB' > := parseCafeModExp(TS, PSM, DB) /\
-      PDR := parseDecl('protecting_.[T'], PU, U, VDS) .
+      PDR := parseDecl('protecting_.[T'], PU, U, opSet2VarSet(VDS)) .
 
 ***(%
   ...
@@ -1358,27 +1462,27 @@ Full Maude function
   ceq parseCafeDecl('extending`(_`)[T], PU, U, VDS, PSM, TSM, DB) = < PDR, nil, none, DB' >
    if TS := changeTheoryByModule(T, isATheory(U), DB) /\
       < T', DB' > := parseCafeModExp(TS, PSM, DB) /\
-      PDR := parseDecl('extending_.[T'], PU, U, VDS) .
+      PDR := parseDecl('extending_.[T'], PU, U, opSet2VarSet(VDS)) .
   ceq parseCafeDecl('ex`(_`)[T], PU, U, VDS, PSM, TSM, DB) = < PDR, nil, none, DB' >
    if TS := changeTheoryByModule(T, isATheory(U), DB) /\
       < T', DB' > := parseCafeModExp(TS, PSM, DB) /\
-      PDR := parseDecl('extending_.[T'], PU, U, VDS) .
+      PDR := parseDecl('extending_.[T'], PU, U, opSet2VarSet(VDS)) .
   ceq parseCafeDecl('inc`(_`)[T], PU, U, VDS, PSM, TSM, DB) = < PDR, nil, none, DB' >
    if TS := changeTheoryByModule(T, isATheory(U), DB) /\
       < T', DB' > := parseCafeModExp(TS, PSM, DB) /\
-      PDR := parseDecl('including_.[T'], PU, U, VDS) .
+      PDR := parseDecl('including_.[T'], PU, U, opSet2VarSet(VDS)) .
   ceq parseCafeDecl('including`(_`)[T], PU, U, VDS, PSM, TSM, DB) = < PDR, nil, none, DB' >
    if TS := changeTheoryByModule(T, isATheory(U), DB) /\
       < T', DB' > := parseCafeModExp(TS, PSM, DB) /\
-      PDR := parseDecl('including_.[T'], PU, U, VDS) .
+      PDR := parseDecl('including_.[T'], PU, U, opSet2VarSet(VDS)) .
   ceq parseCafeDecl('using`(_`)[T], PU, U, VDS, PSM, TSM, DB) = < PDR, nil, none, DB' >
    if TS := changeTheoryByModule(T, isATheory(U), DB) /\
       < T', DB' > := parseCafeModExp(TS, PSM, DB) /\
-      PDR := parseDecl('including_.[T'], PU, U, VDS) .
+      PDR := parseDecl('including_.[T'], PU, U, opSet2VarSet(VDS)) .
   ceq parseCafeDecl('us`(_`)[T], PU, U, VDS, PSM, TSM, DB) = < PDR, nil, none, DB' >
    if TS := changeTheoryByModule(T, isATheory(U), DB) /\
       < T', DB' > := parseCafeModExp(TS, PSM, DB) /\
-      PDR := parseDecl('including_.[T'], PU, U, VDS) .
+      PDR := parseDecl('including_.[T'], PU, U, opSet2VarSet(VDS)) .
 
   op changeTheoryByModule : Term Bool Database -> Term .
   ceq changeTheoryByModule(Q[TL], B, DB) = Q[TL']
@@ -2028,7 +2132,7 @@ as standard Maude sorts:
 
   ceq parseCafeDecl('*`[_`]*['CafeToken[T]], PU, U, VDS, PSM, TSM, DB) =
                                                         < PDR, nil, downQid(T), DB >
-   if PDR := parseDecl('sort_.['sortToken[T]], PU, U, VDS) .
+   if PDR := parseDecl('sort_.['sortToken[T]], PU, U, opSet2VarSet(VDS)) .
 
 ***(%
 \end{verbatim}
@@ -2046,7 +2150,7 @@ modules with the Full Maude function \verb"parseDecl":
 
   ceq parseCafeDecl('`[_`]['CafeToken[T]], PU, U, VDS, PSM, TSM, DB) = < PDR, nil, none, DB >
    if T' := addSortToken('CafeToken[T]) /\
-      PDR := parseDecl('sorts_.[T'], PU, U, VDS) .
+      PDR := parseDecl('sorts_.[T'], PU, U, opSet2VarSet(VDS)) .
 
 ***(%
 \end{verbatim}
@@ -2063,7 +2167,7 @@ and added to the current module:
   ceq parseCafeDecl('`[_`]['__[T, T']], PU, U, VDS, PSM, TSM, DB) = < PDR, nil, none, DB >
    if T'' := addSortToken(T) /\
       T''' := addSortToken(T') /\
-      PDR := parseDecl('sorts_.['__[T'', T''']], PU, U, VDS) .
+      PDR := parseDecl('sorts_.['__[T'', T''']], PU, U, opSet2VarSet(VDS)) .
 
 ***(%
 \end{verbatim}
@@ -2082,8 +2186,8 @@ thus obtained:
    if T'' := addSortToken(T) /\
       T''' := addSortToken(T') /\
       TS := sub2sort('_<_[T, T']) /\
-      < PU' ; U' ;  VDS' > := parseDecl('sorts_.[TS], PU, U, VDS) /\
-      PDR := parseDecl('subsorts_.['_<_[T'', T''']], PU', U', VDS') .
+      < PU' ; U' ; VAS:VariableSet > := parseDecl('sorts_.[TS], PU, U, opSet2VarSet(VDS)) /\
+      PDR := parseDecl('subsorts_.['_<_[T'', T''']], PU', U', VAS:VariableSet) .
 
 ***(%
 \end{verbatim}
@@ -2155,7 +2259,7 @@ and then add the operator declaration with \verb"parseDecl":
                     VDS, PSM, TSM, DB) = < PDR, nil, none, DB >
    if T4 := addSortToken(T') /\
       PDR := parseDecl('op_:_->_`[_`].['token[T], T4, 'sortToken[T''],
-                       map2MaudeAttr(T''')], PU, U, VDS) .
+                       map2MaudeAttr(T''')], PU, U, opSet2VarSet(VDS)) .
 
 ***(%
 \end{verbatim}
@@ -2169,7 +2273,7 @@ and then add the operator declaration with \verb"parseDecl":
                     PSM, TSM, DB) = < PDR, nil, none, DB >
    if T4 := addSortToken(T') /\
       PDR := parseDecl('op_:_->_`[_`].['token[upTerm(tokenList2token(TL))], T4,
-                       'sortToken[T''], map2MaudeAttr(T''')], PU, U, VDS) .
+                       'sortToken[T''], map2MaudeAttr(T''')], PU, U, opSet2VarSet(VDS)) .
 
 ***(%
 \end{verbatim}
@@ -2182,13 +2286,13 @@ and then add the operator declaration with \verb"parseDecl":
   ceq parseCafeDecl('op_:_->_.['CafeToken[T], T', 'CafeToken[T'']],  PU, U, VDS, PSM,
                     TSM, DB) = < PDR, nil, none, DB >
    if T4 := addSortToken(T') /\
-      PDR := parseDecl('op_:_->_.['token[T], T4, cafeType2maudeType(T'')], PU, U, VDS) .
+      PDR := parseDecl('op_:_->_.['token[T], T4, cafeType2maudeType(T'')], PU, U, opSet2VarSet(VDS)) .
 
   ceq parseCafeDecl('op_:_->_.['__[TL], T', 'CafeToken[T'']],  PU, U, VDS, PSM,
                     TSM, DB) = < PDR, nil, none, DB >
    if T4 := addSortToken(T') /\
       PDR := parseDecl('op_:_->_.['token[upTerm(tokenList2token(TL))], T4,
-                                                cafeType2maudeType(T'')], PU, U, VDS) .
+                                                cafeType2maudeType(T'')], PU, U, opSet2VarSet(VDS)) .
 
 ***(%
 \end{comment}
@@ -2203,7 +2307,7 @@ The declaration of constants simplifies the task, since the arity does not appea
   ceq parseCafeDecl('op_:`->_`{_`}.['CafeToken[T], 'CafeToken[T''], T'''],  PU, U, VDS,
                     PSM, TSM, DB) = < PDR, nil, none, DB >
    if PDR := parseDecl('op_:`->_`[_`].['token[T], cafeType2maudeType(T''),
-                                       map2MaudeAttr(T''')], PU, U, VDS) .
+                                       map2MaudeAttr(T''')], PU, U, opSet2VarSet(VDS)) .
 
 ***(%
 \end{verbatim}
@@ -2215,13 +2319,13 @@ The declaration of constants simplifies the task, since the arity does not appea
 
   ceq parseCafeDecl('op_:`->_.['CafeToken[T], 'CafeToken[T'']],  PU, U, VDS, PSM,
                     TSM, DB) = < PDR, nil, none, DB >
-   if PDR := parseDecl('op_:`->_.['token[T], cafeType2maudeType(T'')], PU, U, VDS) .
+   if PDR := parseDecl('op_:`->_.['token[T], cafeType2maudeType(T'')], PU, U, opSet2VarSet(VDS)) .
 
   ceq parseCafeDecl('ops_:_->_`{_`}.['neCafeTokenList[T], T', 'CafeToken[T''], T'''], PU,
                     U, VDS, PSM, TSM, DB) = < PDR, nil, none, DB >
    if T4 := addSortToken(T') /\
       PDR := parseDecl('ops_:_->_`[_`].['neTokenList[T], T4, cafeType2maudeType(T''),
-                                        map2MaudeAttr(T''')], PU, U, VDS) .
+                                        map2MaudeAttr(T''')], PU, U, opSet2VarSet(VDS)) .
 
 ***(%
 \end{comment}
@@ -2238,7 +2342,7 @@ list of Maude tokens, and then introduced into the current module:
                     PSM, TSM, DB) = < PDR, nil, none, DB >
    if T4 := addSortToken(T') /\
       PDR := parseDecl('ops_:_->_.['neTokenList[T], T4, cafeType2maudeType(T'')],
-                       PU, U, VDS) .
+                       PU, U, opSet2VarSet(VDS)) .
 
 ***(%
 \end{verbatim}
@@ -2251,17 +2355,17 @@ list of Maude tokens, and then introduced into the current module:
   ceq parseCafeDecl('ops_:`->_`{_`}.['neCafeTokenList[T], 'CafeToken[T''], T'''],  PU, U,
                     VDS, PSM, TSM, DB) = < PDR, nil, none, DB >
    if PDR := parseDecl('ops_:`->_`[_`].['neTokenList[T], cafeType2maudeType(T''),
-                                        map2MaudeAttr(T''')], PU, U, VDS) .
+                                        map2MaudeAttr(T''')], PU, U, opSet2VarSet(VDS)) .
 
   ceq parseCafeDecl('ops_:`->_.['neCafeTokenList[T], 'CafeToken[T'']], PU, U, VDS, PSM,
                     TSM, DB) = < PDR, nil, none, DB >
-   if PDR := parseDecl('ops_:`->_.['neTokenList[T], cafeType2maudeType(T'')], PU, U, VDS) .
+   if PDR := parseDecl('ops_:`->_.['neTokenList[T], cafeType2maudeType(T'')], PU, U, opSet2VarSet(VDS)) .
 
   ceq parseCafeDecl('bop_:_->_.['CafeToken[T], T', 'CafeToken[T'']],  PU, U, VDS, PSM,
                     TSM, DB) = < PDR, nil, none, DB >
    if T4 := addSortToken(T') /\
       PDR := parseDecl('op_:_->_`[_`].['token[T], T4, cafeType2maudeType(T''),
-                                       behavioral], PU, U, VDS) .
+                                       behavioral], PU, U, opSet2VarSet(VDS)) .
 
   op behavioral : -> Term .
   eq behavioral = 'metadata_['token[''"behavioral".Sort]] .
@@ -2274,19 +2378,19 @@ list of Maude tokens, and then introduced into the current module:
                     VDS, PSM, TSM, DB) = < PDR, nil, none, DB >
    if T4 := addSortToken(T') /\
       PDR := parseDecl('op_:_->_`[_`].['token[T], T4, cafeType2maudeType(T''),
-                                       addBehavioral(map2MaudeAttr(T'''))], PU, U, VDS) .
+                                       addBehavioral(map2MaudeAttr(T'''))], PU, U, opSet2VarSet(VDS)) .
 
   ceq parseCafeDecl('bops_:_->_.['neCafeTokenList[T], T', 'CafeToken[T'']], PU, U, VDS,
                     PSM, TSM, DB) = < PDR, nil, none, DB >
    if T4 := addSortToken(T') /\
       PDR := parseDecl('ops_:_->_`[_`].['neTokenList[T], T4, cafeType2maudeType(T''),
-                                        behavioral], PU, U, VDS) .
+                                        behavioral], PU, U, opSet2VarSet(VDS)) .
 
   ceq parseCafeDecl('ops_:_->_`{_`}.['neCafeTokenList[T], T', 'CafeToken[T''], T'''], PU,
                     U, VDS, PSM, TSM, DB) = < PDR, nil, none, DB >
    if T4 := addSortToken(T') /\
       PDR := parseDecl('ops_:_->_`[_`].['neTokenList[T], T4, cafeType2maudeType(T''),
-                                        map2MaudeAttr(T''')], PU, U, VDS) .
+                                        map2MaudeAttr(T''')], PU, U, opSet2VarSet(VDS)) .
 
 ***(%
 \end{comment}
@@ -2303,7 +2407,7 @@ with coarity \verb"Bool", which must be meta-represented as a token:
                                                                   < PDR, nil, none, DB >
    if T4 := addSortToken(T') /\
       PDR := parseDecl('op_:_->_`[_`].['token[T], T4, 'sortToken[''Bool.Qid],
-                       map2MaudeAttr(T''')], PU, U, VDS) .
+                       map2MaudeAttr(T''')], PU, U, opSet2VarSet(VDS)) .
 
 ***(%
 \end{verbatim}
@@ -2316,7 +2420,7 @@ with coarity \verb"Bool", which must be meta-represented as a token:
   ceq parseCafeDecl('pred_:_.['CafeToken[T], T'],  PU, U, VDS, PSM,
                     TSM, DB) = < PDR, nil, none, DB >
    if T4 := addSortToken(T') /\
-      PDR := parseDecl('op_:_->_.['token[T], T4, 'sortToken[''Bool.Qid]], PU, U, VDS) .
+      PDR := parseDecl('op_:_->_.['token[T], T4, 'sortToken[''Bool.Qid]], PU, U, opSet2VarSet(VDS)) .
 
 ***(%
 \end{comment}
@@ -2496,7 +2600,7 @@ used to parse terms in the current module:
 
   ceq parseCafeDecl('vars_:_.['neCafeTokenList[T], 'CafeToken[T']], PU, U, VDS, PSM,
                     TSM, DB) = < PDR, nil, none, DB >
-   if PDR := < PU ; U ; VDS parseVars(downQidList(T), parseType('sortToken[T'])) > .
+   if PDR := < PU ; U ; (opSet2VarSet(VDS) ; parseVars(downQidList(T), parseType('sortToken[T']))) > .
 
 ***(%
 \end{verbatim}
@@ -2511,13 +2615,13 @@ the attributes and then using \verb"parseDecl":
 \begin{verbatim}
 %)
 
-  ceq parseCafeDecl('eq_=_.['CafeBubble[T], 'CafeBubble[T']], PU, U, VDS, PSM, TSM, DB) =
+  ceq parseCafeDecl('eq_=_.['CafeEqLBubble[T], 'CafeRBubble[T']], PU, U, VDS, PSM, TSM, DB) =
                                               < PDR, nil, none, DB >
    if QIL := improveLabel(downQidList(T)) /\
       VDS' := opDeclSetFromQidList(QIL) /\
       TOTF := renameOnTheFly(upTerm(QIL), VDS') /\
       TOTF' := renameOnTheFly(cafeEqAtS2maudeEqAts(T'), VDS') /\
-      PDR := parseDecl('eq_=_.['bubble[TOTF], 'bubble[TOTF']], PU, U, VDS) .
+      PDR := parseDecl('eq_=_.['eqlbubble[TOTF], 'rbubble[TOTF']], PU, U, opSet2VarSet(VDS)) .
 
 ***(%
 \end{verbatim}
@@ -2527,13 +2631,13 @@ the attributes and then using \verb"parseDecl":
 \begin{comment}
 %)
 
-  ceq parseCafeDecl('beq_=_.['CafeBubble[T], 'CafeBubble[T']], PU, U, VDS, PSM, TSM, DB) =
+  ceq parseCafeDecl('beq_=_.['CafeEqLBubble[T], 'CafeRBubble[T']], PU, U, VDS, PSM, TSM, DB) =
                                               < PDR, nil, none, DB >
    if QIL := improveLabel(downQidList(T)) /\
       VDS' := opDeclSetFromQidList(QIL) /\
       TOTF := renameOnTheFly(T, VDS') /\
       TOTF' := behavioralEq(renameOnTheFly(cafeEqAtS2maudeEqAts(T'), VDS')) /\
-      PDR := parseDecl('eq_=_.['bubble[TOTF], 'bubble[TOTF']], PU, U, VDS) .
+      PDR := parseDecl('eq_=_.['eqlbubble[TOTF], 'rbubble[TOTF']], PU, U, opSet2VarSet(VDS)) .
 
 ***(%
 \end{comment}
@@ -2546,14 +2650,14 @@ the \verb"parseDecl" function:
 \begin{verbatim}
 %)
 
-  ceq parseCafeDecl('ceq_=_if_.['CafeBubble[T], 'CafeBubble[T'], 'CafeBubble[T'']],
+  ceq parseCafeDecl('ceq_=_if_.['CafeEqLBubble[T], 'CafeRCBubble[T'], 'CafeRBubble[T'']],
                     PU, U, VDS, PSM, TSM, DB) = < PDR, nil, none, DB >
    if QIL := improveLabel(downQidList(T)) /\
       VDS' := opDeclSetFromQidList(QIL) /\
       TOTF := renameOnTheFly(T, VDS') /\
       TOTF' := renameOnTheFly(T', VDS') /\
       TOTF'' := renameOnTheFly(cafeEqAtS2maudeEqAts(T''), VDS') /\
-      PDR := parseDecl('ceq_=_if_.['bubble[TOTF], 'bubble[TOTF'], 'bubble[TOTF'']], PU, U, VDS) .
+      PDR := parseDecl('ceq_=_if_.['eqlbubble[TOTF], 'rcbubble[TOTF'], 'rbubble[TOTF'']], PU, U, opSet2VarSet(VDS)) .
 
 ***(%
 \end{verbatim}
@@ -2563,32 +2667,32 @@ the \verb"parseDecl" function:
 \begin{comment}
 %)
 
-  ceq parseCafeDecl('cq_=_if_.['CafeBubble[T], 'CafeBubble[T'], 'CafeBubble[T'']], PU, U,
+  ceq parseCafeDecl('cq_=_if_.['CafeEqLBubble[T], 'CafeRCBubble[T'], 'CafeRBubble[T'']], PU, U,
                     VDS, PSM, TSM, DB) = < PDR, nil, none, DB >
    if QIL := improveLabel(downQidList(T)) /\
       VDS' := opDeclSetFromQidList(QIL) /\
       TOTF := renameOnTheFly(T, VDS') /\
       TOTF' := renameOnTheFly(T', VDS') /\
       TOTF'' := renameOnTheFly(cafeEqAtS2maudeEqAts(T''), VDS') /\
-      PDR := parseDecl('ceq_=_if_.['bubble[TOTF], 'bubble[TOTF'], 'bubble[TOTF'']], PU, U, VDS) .
+      PDR := parseDecl('ceq_=_if_.['eqlbubble[TOTF], 'rcbubble[TOTF'], 'rbubble[TOTF'']], PU, U, opSet2VarSet(VDS)) .
 
-  ceq parseCafeDecl('bceq_=_if_.['CafeBubble[T], 'CafeBubble[T'], 'CafeBubble[T'']], PU, U,
+  ceq parseCafeDecl('bceq_=_if_.['CafeEqLBubble[T], 'CafeRCBubble[T'], 'CafeRBubble[T'']], PU, U,
                     VDS, PSM, TSM, DB) = < PDR, nil, none, DB >
    if QIL := improveLabel(downQidList(T)) /\
       VDS' := opDeclSetFromQidList(QIL) /\
       TOTF := renameOnTheFly(T, VDS') /\
       TOTF' := renameOnTheFly(T', VDS') /\
       TOTF'' := behavioralEq(renameOnTheFly(cafeEqAtS2maudeEqAts(T''), VDS')) /\
-      PDR := parseDecl('ceq_=_if_.['bubble[TOTF], 'bubble[TOTF'], 'bubble[TOTF'']], PU, U, VDS) .
+      PDR := parseDecl('ceq_=_if_.['eqlbubble[TOTF], 'rcbubble[TOTF'], 'rbubble[TOTF'']], PU, U, opSet2VarSet(VDS)) .
 
-  ceq parseCafeDecl('bcq_=_if_.['CafeBubble[T], 'CafeBubble[T'], 'CafeBubble[T'']], PU, U,
+  ceq parseCafeDecl('bcq_=_if_.['CafeEqLBubble[T], 'CafeRCBubble[T'], 'CafeRBubble[T'']], PU, U,
                     VDS, PSM, TSM, DB) = < PDR, nil, none, DB >
    if QIL := improveLabel(downQidList(T)) /\
       VDS' := opDeclSetFromQidList(QIL) /\
       TOTF := renameOnTheFly(T, VDS') /\
       TOTF' := renameOnTheFly(T', VDS') /\
       TOTF'' := behavioralEq(renameOnTheFly(cafeEqAtS2maudeEqAts(T''), VDS')) /\
-      PDR := parseDecl('ceq_=_if_.['bubble[TOTF], 'bubble[TOTF'], 'bubble[TOTF'']], PU, U, VDS) .
+      PDR := parseDecl('ceq_=_if_.['eqlbubble[TOTF], 'rcbubble[TOTF'], 'rbubble[TOTF'']], PU, U, opSet2VarSet(VDS)) .
 
 ***(%
 \end{comment}
@@ -2601,13 +2705,13 @@ by \verb"parseDecl" is a Maude rule:
 \begin{verbatim}
 %)
 
-  ceq parseCafeDecl('trans_=>_.['CafeBubble[T], 'CafeBubble[T']], PU, U,
+  ceq parseCafeDecl('trans_=>_.['CafeRlLBubble[T], 'CafeRBubble[T']], PU, U,
                     VDS, PSM, TSM, DB) = < PDR, nil, none, DB >
    if QIL := improveLabel(downQidList(T)) /\
       VDS' := opDeclSetFromQidList(QIL) /\
       TOTF := renameOnTheFly(T, VDS') /\
       TOTF' := renameOnTheFly(cafeEqAtS2maudeEqAts(T'), VDS') /\
-      PDR := parseDecl('rl_=>_.['bubble[TOTF], 'bubble[TOTF']], PU, U, VDS) .
+      PDR := parseDecl('rl_=>_.['rllbubble[TOTF], 'rbubble[TOTF']], PU, U, opSet2VarSet(VDS)) .
 
 ***(%
 \end{verbatim}
@@ -2617,65 +2721,65 @@ by \verb"parseDecl" is a Maude rule:
 \begin{comment}
 %)
 
-  ceq parseCafeDecl('trns_=>_.['CafeBubble[T], 'CafeBubble[T']], PU, U, VDS, PSM,
+  ceq parseCafeDecl('trns_=>_.['CafeRlLBubble[T], 'CafeRBubble[T']], PU, U, VDS, PSM,
                     TSM, DB) = < PDR, nil, none, DB >
    if QIL := improveLabel(downQidList(T)) /\
       VDS' := opDeclSetFromQidList(QIL) /\
       TOTF := renameOnTheFly(T, VDS') /\
       TOTF' := renameOnTheFly(cafeEqAtS2maudeEqAts(T'), VDS') /\
-      PDR := parseDecl('rl_=>_.['bubble[TOTF], 'bubble[TOTF']], PU, U, VDS) .
+      PDR := parseDecl('rl_=>_.['rllbubble[TOTF], 'rbubble[TOTF']], PU, U, opSet2VarSet(VDS)) .
 
-  ceq parseCafeDecl('ctrans_=>_if_.['CafeBubble[T], 'CafeBubble[T'], 'CafeBubble[T'']],
+  ceq parseCafeDecl('ctrans_=>_if_.['CafeRlLBubble[T], 'CafeRCBubble[T'], 'CafeRBubble[T'']],
                     PU, U, VDS, PSM, TSM, DB) = < PDR, nil, none, DB >
    if QIL := improveLabel(downQidList(T)) /\
       VDS' := opDeclSetFromQidList(QIL) /\
       TOTF := renameOnTheFly(T, VDS') /\
       TOTF' := renameOnTheFly(T', VDS') /\
       TOTF'' := renameOnTheFly(cafeEqAtS2maudeEqAts(T''), VDS') /\
-      PDR := parseDecl('crl_=>_if_.['bubble[TOTF], 'bubble[TOTF'], 'bubble[TOTF'']], PU, U, VDS) .
+      PDR := parseDecl('crl_=>_if_.['rllbubble[TOTF], 'rcbubble[TOTF'], 'rbubble[TOTF'']], PU, U, opSet2VarSet(VDS)) .
 
-  ceq parseCafeDecl('ctrns_=>_if_.['CafeBubble[T], 'CafeBubble[T'], 'CafeBubble[T'']],
+  ceq parseCafeDecl('ctrns_=>_if_.['CafeRlLBubble[T], 'CafeRCBubble[T'], 'CafeRBubble[T'']],
                     PU, U, VDS, PSM, TSM, DB) = < PDR, nil, none, DB >
    if QIL := downQidList(T) /\
       VDS' := VDS opDeclSetFromQidList(QIL) /\
       TOTF := renameOnTheFly(T, VDS') /\
       TOTF' := renameOnTheFly(T', VDS') /\
       TOTF'' := renameOnTheFly(cafeEqAtS2maudeEqAts(T''), VDS') /\
-      PDR := parseDecl('crl_=>_if_.['bubble[TOTF], 'bubble[TOTF'], 'bubble[TOTF'']], PU, U, VDS') .
+      PDR := parseDecl('crl_=>_if_.['rllbubble[TOTF], 'rcbubble[TOTF'], 'rbubble[TOTF'']], PU, U, opSet2VarSet(VDS')) .
 
-  ceq parseCafeDecl('btrans_=>_.['CafeBubble[T], 'CafeBubble[T']], PU, U, VDS, PSM,
+  ceq parseCafeDecl('btrans_=>_.['CafeRlLBubble[T], 'CafeRBubble[T']], PU, U, VDS, PSM,
                     TSM, DB) = < PDR, nil, none, DB >
    if QIL := downQidList(T) /\
       VDS' := opDeclSetFromQidList(QIL) /\
       TOTF := renameOnTheFly(T, VDS') /\
       TOTF' := behavioralEq(renameOnTheFly(cafeEqAtS2maudeEqAts(T'), VDS')) /\
-      PDR := parseDecl('rl_=>_.['bubble[TOTF], 'bubble[TOTF']], PU, U, VDS) .
+      PDR := parseDecl('rl_=>_.['rllbubble[TOTF], 'rbubble[TOTF']], PU, U, opSet2VarSet(VDS)) .
 
-  ceq parseCafeDecl('btrns_=>_.['CafeBubble[T], 'CafeBubble[T']], PU, U, VDS, PSM,
+  ceq parseCafeDecl('btrns_=>_.['CafeRlLBubble[T], 'CafeRBubble[T']], PU, U, VDS, PSM,
                     TSM, DB) = < PDR, nil, none, DB >
    if QIL := downQidList(T) /\
       VDS' := opDeclSetFromQidList(QIL) /\
       TOTF := renameOnTheFly(T, VDS') /\
       TOTF' := behavioralEq(renameOnTheFly(cafeEqAtS2maudeEqAts(T'), VDS')) /\
-      PDR := parseDecl('rl_=>_.['bubble[TOTF], 'bubble[TOTF']], PU, U, VDS) .
+      PDR := parseDecl('rl_=>_.['rllbubble[TOTF], 'rbubble[TOTF']], PU, U, opSet2VarSet(VDS)) .
 
-  ceq parseCafeDecl('bctrans_=>_if_.['CafeBubble[T], 'CafeBubble[T'], 'CafeBubble[T'']],
+  ceq parseCafeDecl('bctrans_=>_if_.['CafeRlLBubble[T], 'CafeRCBubble[T'], 'CafeRBubble[T'']],
                     PU, U, VDS, PSM, TSM, DB) = < PDR, nil, none, DB >
    if QIL := downQidList(T) /\
       VDS' := opDeclSetFromQidList(QIL) /\
       TOTF := renameOnTheFly(T, VDS') /\
       TOTF' := renameOnTheFly(T', VDS') /\
       TOTF'' := behavioralEq(renameOnTheFly(cafeEqAtS2maudeEqAts(T''), VDS')) /\
-      PDR := parseDecl('crl_=>_if_.['bubble[TOTF], 'bubble[TOTF'], 'bubble[TOTF'']], PU, U, VDS) .
+      PDR := parseDecl('crl_=>_if_.['rllbubble[TOTF], 'rcbubble[TOTF'], 'rbubble[TOTF'']], PU, U, opSet2VarSet(VDS)) .
 
-  ceq parseCafeDecl('bctrns_=>_if_.['CafeBubble[T], 'CafeBubble[T'], 'CafeBubble[T'']],
+  ceq parseCafeDecl('bctrns_=>_if_.['CafeRlLBubble[T], 'CafeRCBubble[T'], 'CafeRBubble[T'']],
                     PU, U, VDS, PSM, TSM, DB) = < PDR, nil, none, DB >
    if QIL := downQidList(T) /\
       VDS' := VDS opDeclSetFromQidList(QIL) /\
       TOTF := renameOnTheFly(T, VDS') /\
       TOTF' := renameOnTheFly(T', VDS') /\
       TOTF'' := behavioralEq(renameOnTheFly(cafeEqAtS2maudeEqAts(T''), VDS')) /\
-      PDR := parseDecl('crl_=>_if_.['bubble[TOTF], 'bubble[TOTF'], 'bubble[TOTF'']], PU, U, VDS) .
+      PDR := parseDecl('crl_=>_if_.['rllbubble[TOTF], 'rcbubble[TOTF'], 'rbubble[TOTF'']], PU, U, opSet2VarSet(VDS)) .
 
 ***(%
 \end{comment}
@@ -2816,67 +2920,67 @@ identifiers to extend the variable set with the variables defined on the fly in 
 %)
 
   ceq parseCafeDecl('reduce_.[T], PU, U, VDS, PSM, TSM, DB) = < PDR, nil, none, DB >
-   if PDR := < PU ; U ; VDS > .
+   if PDR := < PU ; U ; opSet2VarSet(VDS) > .
   ceq parseCafeDecl('red_.[T], PU, U, VDS, PSM, TSM, DB) = < PDR, nil, none, DB >
-   if PDR := < PU ; U ; VDS > .
+   if PDR := < PU ; U ; opSet2VarSet(VDS) > .
   ceq parseCafeDecl(':goal`{_`}[T], PU, U, VDS, PSM, TSM, DB) = < PDR, nil, none, DB >
-   if PDR := < PU ; U ; VDS > .
+   if PDR := < PU ; U ; opSet2VarSet(VDS) > .
   ceq parseCafeDecl(':ind`on`(_`)[T], PU, U, VDS, PSM, TSM, DB) = < PDR, nil, none, DB >
-   if PDR := < PU ; U ; VDS > .
+   if PDR := < PU ; U ; opSet2VarSet(VDS) > .
   ceq parseCafeDecl(':apply`(_`)[T], PU, U, VDS, PSM, TSM, DB) = < PDR, nil, none, DB >
-   if PDR := < PU ; U ; VDS > .
+   if PDR := < PU ; U ; opSet2VarSet(VDS) > .
   ceq parseCafeDecl(':sel`(_`)[T], PU, U, VDS, PSM, TSM, DB) = < PDR, nil, none, DB >
-   if PDR := < PU ; U ; VDS > .
+   if PDR := < PU ; U ; opSet2VarSet(VDS) > .
   ceq parseCafeDecl(':postpone`..@CafeInductiveComm@, PU, U, VDS, PSM, TSM, DB) =
                                                                 < PDR, nil, none, DB >
-   if PDR := < PU ; U ; VDS > .
+   if PDR := < PU ; U ; opSet2VarSet(VDS) > .
   ceq parseCafeDecl(':imp`[_`].[T], PU, U, VDS, PSM, TSM, DB) = < PDR, nil, none, DB >
-   if PDR := < PU ; U ; VDS > .
+   if PDR := < PU ; U ; opSet2VarSet(VDS) > .
   ceq parseCafeDecl(':imp`[_`]by`{_`}[T, T'], PU, U, VDS, PSM, TSM, DB) =
                                                                 < PDR, nil, none, DB >
-   if PDR := < PU ; U ; VDS > .
+   if PDR := < PU ; U ; opSet2VarSet(VDS) > .
   ceq parseCafeDecl(':def_=`:ctf`{_`}[T, T'], PU, U, VDS, PSM, TSM, DB) =
                                                                 < PDR, nil, none, DB >
-   if PDR := < PU ; U ; VDS > .
+   if PDR := < PU ; U ; opSet2VarSet(VDS) > .
   ceq parseCafeDecl(':def_=`:ctf`[_`][T, T'], PU, U, VDS, PSM, TSM, DB) =
                                                                 < PDR, nil, none, DB >
-   if PDR := < PU ; U ; VDS > .
+   if PDR := < PU ; U ; opSet2VarSet(VDS) > .
   ceq parseCafeDecl(':def_=`:cvss`[_`][T, T'], PU, U, VDS, PSM, TSM, DB) =
                                                                 < PDR, nil, none, DB >
-   if PDR := < PU ; U ; VDS > .
+   if PDR := < PU ; U ; opSet2VarSet(VDS) > .
   ceq parseCafeDecl(':def_=`:cvvs`[_`][T, T'], PU, U, VDS, PSM, TSM, DB) =
                                                                 < PDR, nil, none, DB >
-   if PDR := < PU ; U ; VDS > .
+   if PDR := < PU ; U ; opSet2VarSet(VDS) > .
   ceq parseCafeDecl(':def_=`:cvsv`[_`][T, T'], PU, U, VDS, PSM, TSM, DB) =
                                                                 < PDR, nil, none, DB >
-   if PDR := < PU ; U ; VDS > .
+   if PDR := < PU ; U ; opSet2VarSet(VDS) > .
   ceq parseCafeDecl(':def_=`:cevss`[_`][T, T'], PU, U, VDS, PSM, TSM, DB) =
                                                                 < PDR, nil, none, DB >
-   if PDR := < PU ; U ; VDS > .
+   if PDR := < PU ; U ; opSet2VarSet(VDS) > .
   ceq parseCafeDecl(':def_=`:cvs`[_`][T, T'], PU, U, VDS, PSM, TSM, DB) =
                                                                 < PDR, nil, none, DB >
-   if PDR := < PU ; U ; VDS > .
+   if PDR := < PU ; U ; opSet2VarSet(VDS) > .
   ceq parseCafeDecl(':def_=`:csv`[_`][T, T'], PU, U, VDS, PSM, TSM, DB) =
                                                                 < PDR, nil, none, DB >
-   if PDR := < PU ; U ; VDS > .
+   if PDR := < PU ; U ; opSet2VarSet(VDS) > .
   ceq parseCafeDecl(':def_=`:csvs`[_`][T, T'], PU, U, VDS, PSM, TSM, DB) =
                                                                 < PDR, nil, none, DB >
-   if PDR := < PU ; U ; VDS > .
+   if PDR := < PU ; U ; opSet2VarSet(VDS) > .
   ceq parseCafeDecl(':show`proof.@CafeInductiveComm@, PU, U, VDS, PSM, TSM, DB) =
                                                                < PDR, nil, none, DB >
-   if PDR := < PU ; U ; VDS > .
+   if PDR := < PU ; U ; opSet2VarSet(VDS) > .
   ceq parseCafeDecl(':desc`proof.@CafeInductiveComm@, PU, U, VDS, PSM, TSM, DB) =
                                                                < PDR, nil, none, DB >
-   if PDR := < PU ; U ; VDS > .
+   if PDR := < PU ; U ; opSet2VarSet(VDS) > .
   ceq parseCafeDecl(':desc`..@CafeInductiveComm@, PU, U, VDS, PSM, TSM, DB) =
                                                                < PDR, nil, none, DB >
-   if PDR := < PU ; U ; VDS > .
+   if PDR := < PU ; U ; opSet2VarSet(VDS) > .
   ceq parseCafeDecl(':id`(_`)[T], PU, U, VDS, PSM, TSM, DB) = < PDR, nil, none, DB >
-   if PDR := < PU ; U ; VDS > .
+   if PDR := < PU ; U ; opSet2VarSet(VDS) > .
   ceq parseCafeDecl(':proof`(_`)[T], PU, U, VDS, PSM, TSM, DB) = < PDR, nil, none, DB >
-   if PDR := < PU ; U ; VDS > .
+   if PDR := < PU ; U ; opSet2VarSet(VDS) > .
   ceq parseCafeDecl(':infer`(_`)[T], PU, U, VDS, PSM, TSM, DB) = < PDR, nil, none, DB >
-   if PDR := < PU ; U ; VDS > .
+   if PDR := < PU ; U ; opSet2VarSet(VDS) > .
 
 ***(%
 \end{comment}
